@@ -26,7 +26,7 @@ public class ResearchPaperController {
 
         try {
             String extractedText = extractTextFromPdf(file);
-            
+
             return ResponseEntity.ok("Extracted Text:\n" + extractedText);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process the PDF file");
