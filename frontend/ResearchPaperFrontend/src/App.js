@@ -79,9 +79,15 @@ function App() {
         <button style={{ margineLeft: '10px'}}> Upload PDF</button>
       </div>
 
-      <div>
+      <div style={{
+        border: '1px solid #ddd',
+        padding: '10px',
+        marginBottom: '20px',
+        height: '300px',
+        overflowY: 'scroll',
+      }}>
         {chatLog.map((entry, index) => (
-          <div key={index} style={{ margin: '10px 0'}}>
+          <div key={index} style={{ textAlign: entry.sender === 'user' ? 'right' : 'left',margin: '10px 0'}}>
             <strong>{entry.sender === 'user' ? 'You' : 'Bot'}:</strong> {entry.message}
           </div>  
         ))}
