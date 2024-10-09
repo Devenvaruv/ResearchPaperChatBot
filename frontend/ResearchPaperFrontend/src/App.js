@@ -7,8 +7,21 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
 
+
   const handleFileChange = (event) => {
     setPdfFile(event.target.files[0]);
+  };
+
+  const handleChatSubmit = (event) => {
+    event.preventDefault();
+
+    if(!chatInput.trim()) {
+      return;
+    }
+  
+
+  setChatLog([...chatLog, { sender: 'user', message: chatInput}]);
+  setChatInput('');
   };
 
   const handleInputChange = (event) => {
@@ -52,7 +65,7 @@ function App() {
         ))}
       </div>
 
-      <form >
+      <form onSubmit={handleChatSubmit} >
         <input type="text" value={chatInput} onChange={handleInputChange}
         placeholder="Type your message..."
         style={{ flex: '1', padding: '10px', marginRight: '10px'}}
