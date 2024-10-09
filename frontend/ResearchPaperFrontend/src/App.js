@@ -12,7 +12,7 @@ function App() {
     setPdfFile(event.target.files[0]);
   };
 
-  const handleChatSubmit = (event) => {
+  const handleChatSubmit = async (event) => {
     event.preventDefault();
 
     if(!chatInput.trim()) {
@@ -21,6 +21,28 @@ function App() {
   
 
   setChatLog([...chatLog, { sender: 'user', message: chatInput}]);
+  
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append('index', 'test');
+    formData.append('text', chatInput);
+    formData.append('namespace', 'namespac');
+
+    const response = await axios.post('http://localhost:8080/api/search', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    });
+    setChatLog((prevLog) => [...prevLog, { sender: 'bot', message: response.data }]);
+  } catch (error) {
+    console.log('ERROR: ' , error );
+    setChatLog((prevLog) => [
+      ...prevLog,
+      { sender: 'bot', message: 'Error: Unable to get a response.' },
+    ]);
+  }
+
   setChatInput('');
   };
 
