@@ -1,5 +1,6 @@
 package com.example.researchpaperbackend;
 
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
@@ -45,6 +46,8 @@ public class ResearchPaperController {
 
             EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
 
+            processAndStoreEmbeddings(extractedText, embeddingStore);
+
             return ResponseEntity.ok("Extracted Text:\n" + extractedText);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process the PDF file");
@@ -71,6 +74,18 @@ public class ResearchPaperController {
                         .dimension(embeddingModel.dimension())
                         .build())
                 .build();
+    }
+
+    private void processAndStoreEmbeddings(String text, EmbeddingStore<TextSegment> embeddingStore) {
+        String[] segments = text.split("\n");
+
+        for(String segment : segments) {
+            if(!segment.trim().isEmpty()) {
+                TextSegment textSegment = TextSegment.from(segment);
+                Embedding embedding = embeddingModel.embed(textSegment).content();
+                embeddingStore.add(embedding, textSegment);
+            }
+        }
     }
 }
 
