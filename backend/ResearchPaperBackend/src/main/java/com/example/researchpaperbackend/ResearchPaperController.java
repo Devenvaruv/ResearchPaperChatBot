@@ -1,22 +1,24 @@
 package com.example.researchpaperbackend;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStore;
-import dev.langchain4j.store.embedding.pinecone.PineconeServerlessIndexConfig;
+import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.pinecone.*;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
 import static com.example.researchpaperbackend.ApiKeys.API_PINECONE;
+import static com.example.researchpaperbackend.ApiKeys.API_OPENAI;
 
 @RestController
 @RequestMapping("/api")
@@ -63,7 +65,102 @@ public class ResearchPaperController {
         }
     }
 
-    private EmbeddingStore<TextSegment> createEmbeddingStore(String index, String namespace) throws Exception {
+    @PostMapping("/search")
+    public String search(@RequestParam String index, @RequestParam String text,@RequestParam String namespace) throws Exception{
+
+        EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index,namespace);
+
+        Embedding queryEmbedding = embeddingModel.embed(text).content();
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(5)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+
+        if(searchResult.matches().isEmpty()){
+            return "No matches found";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for(EmbeddingMatch<TextSegment> match : searchResult.matches()){
+            builder.append(match.embedded().text()).append("\n");
+        }
+
+        return getAISummary(builder.toString());
+    }
+
+    private String getAISummary(String collectedText) throws Exception {
+
+        RestTemplate restTemplate = new RestTemplate();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String openaiApiKey = API_OPENAI;
+        if(openaiApiKey == null || openaiApiKey.isEmpty()){
+            throw new Exception("OpenAI API Key is empty");
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("model", "gpt-3.5-turbo");
+
+        ArrayNode messages = objectMapper.createArrayNode();
+
+        ObjectNode systemMessage = objectMapper.createObjectNode();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", "Use the user's prompt to generate a summary");
+
+        ObjectNode userMessage = objectMapper.createObjectNode();
+        userMessage.put("role", "user");
+        userMessage.put("content", "prompt\n\nText to summarize:\n" + collectedText);
+
+        messages.add(systemMessage);
+        messages.add(userMessage);
+
+        payload.set("messages", messages);
+
+        String requestBody = objectMapper.writeValueAsString(payload);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + openaiApiKey.trim());
+        headers.set("Content-Type", "application/json");
+
+        HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "https://api.openai.com/v1/chat/completions",
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            String responseBody = response.getBody();
+            return extractStringSummary(responseBody);
+        } catch (Exception e){
+
+            throw new Exception("ERROR: " + e);
+        }
+    }
+
+    private String extractStringSummary(String responseBody) throws Exception {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ObjectNode json = (ObjectNode) objectMapper.readTree(responseBody);
+            ArrayNode choices = (ArrayNode) json.get("choices");
+            if (!choices.isEmpty()){
+                ObjectNode firstChoice = (ObjectNode) choices.get(0);
+                ObjectNode message = (ObjectNode) firstChoice.get("message");
+                return message.get("content").asText();
+            }
+
+        } catch (Exception e){
+            throw new Exception("ERROR: "+ e);
+        }
+        return "ERROR: ";
+    }
+
+    private EmbeddingStore<TextSegment> createEmbeddingStore(String index, String namespace) {
         return PineconeEmbeddingStore.builder()
                 .apiKey(API_PINECONE)
                 .index(index)
@@ -77,7 +174,7 @@ public class ResearchPaperController {
     }
 
     private void processAndStoreEmbeddings(String text, EmbeddingStore<TextSegment> embeddingStore) {
-        String[] segments = text.split("\n");
+        String[] segments = text.split("\\r?\\n");
 
         for(String segment : segments) {
             if(!segment.trim().isEmpty()) {
