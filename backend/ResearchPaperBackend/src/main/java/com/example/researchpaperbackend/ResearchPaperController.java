@@ -35,6 +35,7 @@ public class ResearchPaperController {
         return "Hello World";
     }
 
+    @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("/upload-pdf")
     public ResponseEntity<String> uploadPDF(@RequestParam("file") MultipartFile file, String index) {
         if (file.isEmpty()) {
@@ -65,6 +66,7 @@ public class ResearchPaperController {
         }
     }
 
+    @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("/search")
     public String search(@RequestParam String index, @RequestParam String text,@RequestParam String namespace) throws Exception{
 

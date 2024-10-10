@@ -7,6 +7,8 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
 
+  const [index, setIndex] = useState('test');
+  const [namespace, setNamespace] = useState('namespac');
 
   const handleFileChange = (event) => {
     setPdfFile(event.target.files[0]);
@@ -19,31 +21,29 @@ function App() {
       return;
     }
   
-
-  setChatLog([...chatLog, { sender: 'user', message: chatInput}]);
+    setChatLog([...chatLog, { sender: 'user', message: chatInput}]);
   
+    try {
+      const formData = new URLSearchParams();
+      formData.append('index', index);
+      formData.append('text', chatInput);
+      formData.append('namespace', namespace);
 
-  try {
-    const formData = new URLSearchParams();
-    formData.append('index', 'test');
-    formData.append('text', chatInput);
-    formData.append('namespace', 'namespac');
-
-    const response = await axios.post('http://localhost:8080/api/search', formData, {
+      const response = await axios.post('http://localhost:8080/api/search', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-    });
-    setChatLog((prevLog) => [...prevLog, { sender: 'bot', message: response.data }]);
-  } catch (error) {
-    console.log('ERROR: ' , error );
-    setChatLog((prevLog) => [
-      ...prevLog,
-      { sender: 'bot', message: 'Error: Unable to get a response.' },
-    ]);
-  }
+      });
+      setChatLog((prevLog) => [...prevLog, { sender: 'bot', message: response.data }]);
+    } catch (error) {
+      console.log('ERROR: ' , error );
+      setChatLog((prevLog) => [
+        ...prevLog,
+        { sender: 'bot', message: 'Error: Unable to get a response.' },
+      ]);
+    }
 
-  setChatInput('');
+    setChatInput('');
   };
 
   const handleInputChange = (event) => {
@@ -51,15 +51,15 @@ function App() {
   }
 
   const handleUpload = async () => {
+
     if(!pdfFile) {
       alert("Please select a file");
       return;
     }
   
-
     const formData = new FormData();
     formData.append('file', pdfFile);
-    formData.append('index', 'test');
+    formData.append('index', index);
 
     try {
       const response = await axios.post('http://localhost:8080/api/upload-pdf', formData);
@@ -68,6 +68,7 @@ function App() {
       console.log("error uploading: " , error);
       alert("failed to upload pdf.");
     }
+    
   }
 
   return (
@@ -76,7 +77,7 @@ function App() {
       <h3>"PLACEHOLDER LOREM"</h3>
       <div>
         <input type="file" accept=".pdf" onChange={handleFileChange}/>
-        <button style={{ margineLeft: '10px'}}> Upload PDF</button>
+        <button onClick={handleUpload} style={{ margineLeft: '10px'}}> Upload PDF</button>
       </div>
 
       <div style={{
