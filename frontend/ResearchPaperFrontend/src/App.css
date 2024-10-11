@@ -1,0 +1,99 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f6f9;
+    color: #333;
+}
+
+.app-container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+    max-width: 800px;
+    background-color: #fff;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-top: 40px;
+}
+
+.app-title {
+    text-align: center;
+    font-size: 28px;
+    color:#0066ff;
+    margin-bottom: 10px;
+}
+
+.app-subtitle {
+    text-align: center;
+    font-size: 18px;
+    color:#ff00ea;
+    margin-bottom: 30px;
+}
+
+.upload-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.upload-input {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+.upload-button {
+    padding: 10px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.upload-button:hover {
+    background-color: #2980b9;
+}
+
+.chat-container {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+.chat-log {
+    height: 300px;
+    overflow-y: scroll;
+    padding: 10px;
+    background-color: #e0ccde;
+    border-radius: 5px;
+}
+
+.chat-input-form {
+    display: flex;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+.chat-submit-button {
+    padding: 10px 20px;
+    background-color: #0066ff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.chat-submit-button:hover {
+    background-color: #0066ff;
+}

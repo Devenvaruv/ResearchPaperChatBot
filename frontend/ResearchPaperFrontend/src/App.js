@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-
+import './App.css';
 function App() {
 
   const [pdfFile, setPdfFile] = useState(null);
@@ -72,21 +72,17 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <h2>"PLACEHOLDER PLACEHOLDER"</h2>
-      <h3>"PLACEHOLDER LOREM"</h3>
+    <div className="app-container">
+      <h2 className="app-title">Research Paper Assistant</h2>
+      <h3 className="app-subtitle">Current Paper</h3>
       <div>
-        <input type="file" accept=".pdf" onChange={handleFileChange}/>
-        <button onClick={handleUpload} style={{ margineLeft: '10px'}}> Upload PDF</button>
+        <input type="file" accept=".pdf" onChange={handleFileChange} className="upload-input"/>
+        <button className="upload-button" onClick={handleUpload} style={{ margineLeft: '10px'}}> Upload PDF</button>
       </div>
 
-      <div style={{
-        border: '1px solid #ddd',
-        padding: '10px',
-        marginBottom: '20px',
-        height: '300px',
-        overflowY: 'scroll',
-      }}>
+      <div className="chat-container">
+
+      <div className="chat-log">
         {chatLog.map((entry, index) => (
           <div key={index} style={{ textAlign: entry.sender === 'user' ? 'right' : 'left',margin: '10px 0'}}>
             <strong>{entry.sender === 'user' ? 'You' : 'Bot'}:</strong> {entry.message}
@@ -94,15 +90,17 @@ function App() {
         ))}
       </div>
 
-      <form onSubmit={handleChatSubmit} >
-        <input type="text" value={chatInput} onChange={handleInputChange}
+      <form className= "chat-input-form" onSubmit={handleChatSubmit} >
+        <input className= "chat-input" type="text" value={chatInput} onChange={handleInputChange}
         placeholder="Type your message..."
         style={{ flex: '1', padding: '10px', marginRight: '10px'}}
         />
-        <button type="submit" style={{ padding: '10px 20px'}}>
+        <button className="chat-submit-button" type="submit" style={{ padding: '10px 20px'}}>
           Send
         </button>
       </form>
+    </div>
+            
     </div>
   );
 }
