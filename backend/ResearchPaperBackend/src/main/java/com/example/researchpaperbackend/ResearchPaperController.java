@@ -21,6 +21,7 @@ import static com.example.researchpaperbackend.ApiKeys.API_PINECONE;
 import static com.example.researchpaperbackend.ApiKeys.API_OPENAI;
 
 @RestController
+@CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
 @RequestMapping("/api")
 public class ResearchPaperController {
 
@@ -35,7 +36,7 @@ public class ResearchPaperController {
         return "Hello World";
     }
 
-    @CrossOrigin(origins = "http://localhost:3000")
+    @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
     @PostMapping("/upload-pdf")
     public ResponseEntity<String> uploadPDF(@RequestParam("file") MultipartFile file, String index) {
         if (file.isEmpty()) {
@@ -189,6 +190,9 @@ public class ResearchPaperController {
                     TextSegment textSegment = TextSegment.from(currentChunk.toString());
                     Embedding embedding = embeddingModel.embed(textSegment).content();
                     embeddingStore.add(embedding, textSegment);
+
+                    currentChunk.setLength(0);
+                    tokenCount = 0;
                 }
 
                 currentChunk.append(segment).append(" ");
