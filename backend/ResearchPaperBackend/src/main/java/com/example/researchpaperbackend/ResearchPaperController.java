@@ -176,14 +176,31 @@ public class ResearchPaperController {
     }
 
     private void processAndStoreEmbeddings(String text, EmbeddingStore<TextSegment> embeddingStore) {
-        String[] segments = text.split("\\r?\\n");
+        final int maxTokenPerChunk = 500;
+        String[] segments = text.split(" ");
+
+        StringBuilder currentChunk = new StringBuilder();
+        int tokenCount = 0;
 
         for(String segment : segments) {
             if(!segment.trim().isEmpty()) {
-                TextSegment textSegment = TextSegment.from(segment);
-                Embedding embedding = embeddingModel.embed(textSegment).content();
-                embeddingStore.add(embedding, textSegment);
+                if (tokenCount + 1 > maxTokenPerChunk){
+
+                    TextSegment textSegment = TextSegment.from(currentChunk.toString());
+                    Embedding embedding = embeddingModel.embed(textSegment).content();
+                    embeddingStore.add(embedding, textSegment);
+                }
+
+                currentChunk.append(segment).append(" ");
+                tokenCount++;
             }
+        }
+
+
+        if(currentChunk.length() > 0){
+            TextSegment textSegment = TextSegment.from(currentChunk.toString());
+            Embedding embedding = embeddingModel.embed(textSegment).content();
+            embeddingStore.add(embedding, textSegment);
         }
     }
 }
