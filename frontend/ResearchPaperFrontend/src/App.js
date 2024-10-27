@@ -1,14 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import firebaseApp from './firebase';
+import { getAuth, signInWithRedirect, GoogleAuthProvider, getRedirectResult, signInWithPopup } from "firebase/auth";
+
+
+
 function App() {
 
   const [pdfFile, setPdfFile] = useState(null);
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
+  const [userId, setUserId] = useState("");
 
   const [index, setIndex] = useState('test');
   const [namespace, setNamespace] = useState('namespac');
+
+  
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const auth = getAuth(firebaseApp);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      setUserId(result.user);
+    } catch (error) {
+      console.error("Error signing in with Google: ", error);
+    }
+
+    signInWithRedirect(auth, provider);
+  };
+
+  useEffect(() => {
+    const auth = getAuth(firebaseApp);
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("User signed in via redirect:", result.user);
+          setUserId(result.user.uid);
+        } else {
+          console.log("No user returned from redirect result");
+        }
+      })
+      .catch((error) => console.error("Sign-in error:", error));
+
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in.
+        console.log("User is signed in:", user);
+        setUserId(user.uid);
+      } else {
+        // No user is signed in.
+        console.log("No user is signed in.");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleFileChange = (event) => {
     setPdfFile(event.target.files[0]);
@@ -72,12 +120,17 @@ function App() {
   }
 
   return (
+    <>
+    {!userId ? (<button type="button" onClick={signInWithGoogle}>
+          Sign in with Google
+          {userId}
+        </button>) : (
     <div className="app-container">
       <h2 className="app-title">Research Paper Assistant</h2>
       <h3 className="app-subtitle">Current Paper</h3>
       <div>
         <input type="file" accept=".pdf" onChange={handleFileChange} className="upload-input"/>
-        <button className="upload-button" onClick={handleUpload} style={{ margineLeft: '10px'}}> Upload PDF</button>
+        <button className="upload-button" onClick={handleUpload} style={{ marginLeft: '10px'}}> Upload PDF</button>
       </div>
 
       <div className="chat-container">
@@ -101,7 +154,8 @@ function App() {
       </form>
     </div>
             
-    </div>
+    </div>) }
+    </>
   );
 }
 
