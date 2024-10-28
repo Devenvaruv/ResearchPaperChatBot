@@ -14,17 +14,19 @@ function App() {
   const [pdfFile, setPdfFile] = useState(null);
   const [chatInput, setChatInput] = useState("");
   const [chatLog, setChatLog] = useState([]);
+
   const [userId, setUserId] = useState("");
 
+  const [researchPapers, setResearchPapers] = useState([]);
   const [index, setIndex] = useState("test");
-  const [namespace, setNamespace] = useState("namespac");
+  const [namespace, setNamespace] = useState("p-34987");
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const auth = getAuth(firebaseApp);
     try {
       const result = await signInWithPopup(auth, provider);
-      setUserId(result.user);
+      setUserId(result.user.uid);
     } catch (error) {
       console.error("Error signing in with Google: ", error);
     }
@@ -51,7 +53,8 @@ function App() {
         // User is signed in.
         console.log("User is signed in:", user);
         setUserId(user.uid);
-        setIndex("U-" + hashCode(user.uid));
+        setIndex("u-" + hashCode(user.uid));
+        getResearchPaper();
       } else {
         // No user is signed in.
         console.log("No user is signed in.");
@@ -63,6 +66,41 @@ function App() {
   const handleFileChange = (event) => {
     setPdfFile(event.target.files[0]);
   };
+
+  const getResearchPaper = async (event) => {
+    
+    try {
+      const formData = new URLSearchParams();
+      formData.append("index", index);
+      formData.append("text", "p-");
+      formData.append("namespace", "papers");
+
+      const response = await axios.post(
+        "http://localhost:8080/api/search",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+      
+      
+      const papersArray = response.data.split(/\s+/).filter(item => item !== "")
+      setResearchPapers(papersArray)
+      console.log("deven: " , papersArray);   
+    } catch (error) {
+      console.log("ERROR: ", error);
+      
+    }
+    console.log(researchPapers)
+
+  }
+
+  
+
+
+
 
   const handleChatSubmit = async (event) => {
     event.preventDefault();
@@ -108,6 +146,7 @@ function App() {
   };
 
   const handleUpload = async () => {
+
     if (!pdfFile) {
       alert("Please select a file");
       return;
@@ -116,7 +155,7 @@ function App() {
     const formData = new FormData();
     formData.append("file", pdfFile);
     formData.append("index", index);
-    formData.append("namespace", "P-" + hashCode(pdfFile.name));
+    formData.append("namespace", "p-" + hashCode(pdfFile.name));
 
     try {
       const response = await axios.post(
@@ -128,6 +167,23 @@ function App() {
       console.log("error uploading: ", error);
       alert("failed to upload pdf.");
     }
+
+    const formData2 = new FormData();
+    formData2.append("text", "p-" + hashCode(pdfFile.name));
+    formData2.append("index", index);
+    formData2.append("namespace", "papers");
+
+    try {
+      const response2 = await axios.post(
+        "http://localhost:8080/api/update-paper-list",
+        formData2
+      );
+      alert(response2.data)
+    } catch (error) {
+      console.log("error uploading: ", error);
+      alert("error" , error);
+    }
+    
   };
 
   function hashCode(str) {

@@ -1,13 +1,18 @@
 package com.example.researchpaperbackend;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.*;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import dev.langchain4j.store.embedding.*;
-import dev.langchain4j.store.embedding.pinecone.*;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStore;
+import dev.langchain4j.store.embedding.pinecone.PineconeServerlessIndexConfig;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.http.*;
@@ -17,8 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
-import static com.example.researchpaperbackend.ApiKeys.API_PINECONE;
 import static com.example.researchpaperbackend.ApiKeys.API_OPENAI;
+import static com.example.researchpaperbackend.ApiKeys.API_PINECONE;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
@@ -45,11 +50,8 @@ public class ResearchPaperController {
 
         try {
             String extractedText = extractTextFromPdf(file);
-
             EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
-
             processAndStoreEmbeddings(extractedText, embeddingStore);
-
             return ResponseEntity.ok("Extracted Text:\n" + extractedText);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process the PDF file");
@@ -58,8 +60,23 @@ public class ResearchPaperController {
         }
     }
 
+
+    @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
+    @PostMapping("/update-paper-list")
+    public ResponseEntity<String> updatePaperList(String text, String index, String namespace) {
+
+        try {
+            EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
+            processAndStoreEmbeddings(text, embeddingStore);
+            return ResponseEntity.ok("Extracted Text:\n" + text);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
+        }
+    }
+
     private String extractTextFromPdf(MultipartFile file) throws IOException {
-        try(PDDocument document = PDDocument.load(file.getInputStream()) ) {
+        try (PDDocument document = PDDocument.load(file.getInputStream())) {
             PDFTextStripper pdfStripper = new PDFTextStripper();
             return pdfStripper.getText(document);
         }
@@ -67,9 +84,9 @@ public class ResearchPaperController {
 
     @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("/search")
-    public String search(@RequestParam String index, @RequestParam String text,@RequestParam String namespace) throws Exception{
+    public String search(@RequestParam String index, @RequestParam String text, @RequestParam String namespace) throws Exception {
 
-        EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index,namespace);
+        EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
 
         Embedding queryEmbedding = embeddingModel.embed(text).content();
 
@@ -80,13 +97,20 @@ public class ResearchPaperController {
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
-        if(searchResult.matches().isEmpty()){
-            return "No matches found";
+        if (searchResult.matches().isEmpty()) {
+            return index + ", " + text + ", " + namespace;
         }
 
+
         StringBuilder builder = new StringBuilder();
-        for(EmbeddingMatch<TextSegment> match : searchResult.matches()){
+        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
             builder.append(match.embedded().text()).append("\n");
+        }
+
+        System.out.println(builder.toString());
+
+        if (namespace.equals("papers")) {
+            return builder.toString();
         }
 
         return getAISummary(builder.toString());
@@ -98,7 +122,7 @@ public class ResearchPaperController {
         ObjectMapper objectMapper = new ObjectMapper();
 
         String openaiApiKey = API_OPENAI;
-        if(openaiApiKey == null || openaiApiKey.isEmpty()){
+        if (openaiApiKey == null || openaiApiKey.isEmpty()) {
             throw new Exception("OpenAI API Key is empty");
         }
 
@@ -138,7 +162,7 @@ public class ResearchPaperController {
 
             String responseBody = response.getBody();
             return extractStringSummary(responseBody);
-        } catch (Exception e){
+        } catch (Exception e) {
 
             throw new Exception("ERROR: " + e);
         }
@@ -149,14 +173,14 @@ public class ResearchPaperController {
             ObjectMapper objectMapper = new ObjectMapper();
             ObjectNode json = (ObjectNode) objectMapper.readTree(responseBody);
             ArrayNode choices = (ArrayNode) json.get("choices");
-            if (!choices.isEmpty()){
+            if (!choices.isEmpty()) {
                 ObjectNode firstChoice = (ObjectNode) choices.get(0);
                 ObjectNode message = (ObjectNode) firstChoice.get("message");
                 return message.get("content").asText();
             }
 
-        } catch (Exception e){
-            throw new Exception("ERROR: "+ e);
+        } catch (Exception e) {
+            throw new Exception("ERROR: " + e);
         }
         return "ERROR: ";
     }
@@ -181,9 +205,9 @@ public class ResearchPaperController {
         StringBuilder currentChunk = new StringBuilder();
         int tokenCount = 0;
 
-        for(String segment : segments) {
-            if(!segment.trim().isEmpty()) {
-                if (tokenCount + 1 > maxTokenPerChunk){
+        for (String segment : segments) {
+            if (!segment.trim().isEmpty()) {
+                if (tokenCount + 1 > maxTokenPerChunk) {
 
                     TextSegment textSegment = TextSegment.from(currentChunk.toString());
                     Embedding embedding = embeddingModel.embed(textSegment).content();
@@ -199,7 +223,7 @@ public class ResearchPaperController {
         }
 
 
-        if(currentChunk.length() > 0){
+        if (currentChunk.length() > 0) {
             TextSegment textSegment = TextSegment.from(currentChunk.toString());
             Embedding embedding = embeddingModel.embed(textSegment).content();
             embeddingStore.add(embedding, textSegment);
