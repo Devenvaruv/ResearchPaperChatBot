@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './App.css';
-import firebaseApp from './firebase';
-import { getAuth, signInWithRedirect, GoogleAuthProvider, getRedirectResult, signInWithPopup } from "firebase/auth";
-
-
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import "./App.css";
+import firebaseApp from "./firebase";
+import {
+  getAuth,
+  signInWithRedirect,
+  GoogleAuthProvider,
+  getRedirectResult,
+  signInWithPopup,
+} from "firebase/auth";
 
 function App() {
-
   const [pdfFile, setPdfFile] = useState(null);
-  const [chatInput, setChatInput] = useState('');
+  const [chatInput, setChatInput] = useState("");
   const [chatLog, setChatLog] = useState([]);
   const [userId, setUserId] = useState("");
 
-  const [index, setIndex] = useState('test');
-  const [namespace, setNamespace] = useState('namespac');
-
-  
+  const [index, setIndex] = useState("test");
+  const [namespace, setNamespace] = useState("namespac");
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -50,6 +51,7 @@ function App() {
         // User is signed in.
         console.log("User is signed in:", user);
         setUserId(user.uid);
+        setIndex("U-" + hashCode(user.uid));
       } else {
         // No user is signed in.
         console.log("No user is signed in.");
@@ -65,96 +67,156 @@ function App() {
   const handleChatSubmit = async (event) => {
     event.preventDefault();
 
-    if(!chatInput.trim()) {
+    if (!chatInput.trim()) {
       return;
     }
-  
-    setChatLog([...chatLog, { sender: 'user', message: chatInput}]);
-  
+
+    setChatLog([...chatLog, { sender: "user", message: chatInput }]);
+
     try {
       const formData = new URLSearchParams();
-      formData.append('index', index);
-      formData.append('text', chatInput);
-      formData.append('namespace', namespace);
+      formData.append("index", index);
+      formData.append("text", chatInput);
+      formData.append("namespace", namespace);
 
-      const response = await axios.post('http://localhost:8080/api/search', formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-      setChatLog((prevLog) => [...prevLog, { sender: 'bot', message: response.data }]);
-    } catch (error) {
-      console.log('ERROR: ' , error );
+      const response = await axios.post(
+        "http://localhost:8080/api/search",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
       setChatLog((prevLog) => [
         ...prevLog,
-        { sender: 'bot', message: 'Error: Unable to get a response.' },
+        { sender: "bot", message: response.data },
+      ]);
+    } catch (error) {
+      console.log("ERROR: ", error);
+      setChatLog((prevLog) => [
+        ...prevLog,
+        { sender: "bot", message: "Error: Unable to get a response." },
       ]);
     }
 
-    setChatInput('');
+    setChatInput("");
   };
 
   const handleInputChange = (event) => {
     setChatInput(event.target.value);
-  }
+  };
 
   const handleUpload = async () => {
-
-    if(!pdfFile) {
+    if (!pdfFile) {
       alert("Please select a file");
       return;
     }
-  
+
     const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('index', index);
+    formData.append("file", pdfFile);
+    formData.append("index", index);
+    formData.append("namespace", "P-" + hashCode(pdfFile.name));
 
     try {
-      const response = await axios.post('http://localhost:8080/api/upload-pdf', formData);
+      const response = await axios.post(
+        "http://localhost:8080/api/upload-pdf",
+        formData
+      );
       alert(response.data);
     } catch (error) {
-      console.log("error uploading: " , error);
+      console.log("error uploading: ", error);
       alert("failed to upload pdf.");
     }
-    
+  };
+
+  function hashCode(str) {
+    let hash = 0, i, chr;
+
+    if (str.length === 0) return hash;
+    for (i = 0; i < str.length; i++) {
+      chr = str.charCodeAt(i);
+      hash = (hash << 5) - hash + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+
+    hash = Math.abs(hash) % 100000;
+    return hash.toString().padStart(5, "0");
   }
 
   return (
     <>
-    {!userId ? (<button type="button" onClick={signInWithGoogle}>
-          Sign in with Google
-          {userId}
-        </button>) : (
-    <div className="app-container">
-      <h2 className="app-title">Research Paper Assistant</h2>
-      <h3 className="app-subtitle">Current Paper</h3>
-      <div>
-        <input type="file" accept=".pdf" onChange={handleFileChange} className="upload-input"/>
-        <button className="upload-button" onClick={handleUpload} style={{ marginLeft: '10px'}}> Upload PDF</button>
-      </div>
-
-      <div className="chat-container">
-
-      <div className="chat-log">
-        {chatLog.map((entry, index) => (
-          <div key={index} style={{ textAlign: entry.sender === 'user' ? 'right' : 'left',margin: '10px 0'}}>
-            <strong>{entry.sender === 'user' ? 'You' : 'Bot'}:</strong> {entry.message}
-          </div>  
-        ))}
-      </div>
-
-      <form className= "chat-input-form" onSubmit={handleChatSubmit} >
-        <input className= "chat-input" type="text" value={chatInput} onChange={handleInputChange}
-        placeholder="Type your message..."
-        style={{ flex: '1', padding: '10px', marginRight: '10px'}}
-        />
-        <button className="chat-submit-button" type="submit" style={{ padding: '10px 20px'}}>
-          Send
-        </button>
-      </form>
-    </div>
+      {!userId ? (
+        <div className="login-page">
+          <div className="login-container">
+            <h1 className="login-title">
+              Welcome to the Research Paper Assistant
+            </h1>
+            <p className="login-subtitle"> A Better way to understand your research</p>
+            <button className="login-button" type="button" onClick={signInWithGoogle}>
+              <i className="google-icon"></i>Sign in with Google
+            </button>
+          </div>
+        </div>
+        
+      ) : (
+        <div className="app-container">
+          <h2 className="app-title">Research Paper Assistant</h2>
+          <h3 className="app-subtitle">Current Paper</h3>
+          <div>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="upload-input"
+            />
+            <button
+              className="upload-button"
+              onClick={handleUpload}
+              style={{ marginLeft: "10px" }}
+            >
+              {" "}
+              Upload PDF
+            </button>
             
-    </div>) }
+          </div>
+
+          <div className="chat-container">
+            <div className="chat-log">
+              {chatLog.map((entry, index) => (
+                <div
+                  key={index}
+                  style={{
+                    textAlign: entry.sender === "user" ? "right" : "left",
+                    margin: "10px 0",
+                  }}
+                >
+                  <strong>{entry.sender === "user" ? "You" : "Bot"}:</strong>{" "}
+                  {entry.message}
+                </div>
+              ))}
+            </div>
+
+            <form className="chat-input-form" onSubmit={handleChatSubmit}>
+              <input
+                className="chat-input"
+                type="text"
+                value={chatInput}
+                onChange={handleInputChange}
+                placeholder="Type your message..."
+                style={{ flex: "1", padding: "10px", marginRight: "10px" }}
+              />
+              <button
+                className="chat-submit-button"
+                type="submit"
+                style={{ padding: "10px 20px" }}
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

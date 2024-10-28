@@ -38,15 +38,13 @@ public class ResearchPaperController {
 
     @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
     @PostMapping("/upload-pdf")
-    public ResponseEntity<String> uploadPDF(@RequestParam("file") MultipartFile file, String index) {
+    public ResponseEntity<String> uploadPDF(@RequestParam("file") MultipartFile file, String index, String namespace) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("Empty file");
         }
 
         try {
             String extractedText = extractTextFromPdf(file);
-
-            String namespace = "namespac";
 
             EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
 
