@@ -21,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import static com.example.researchpaperbackend.ApiKeys.API_OPENAI;
 import static com.example.researchpaperbackend.ApiKeys.API_PINECONE;
@@ -96,25 +97,70 @@ public class ResearchPaperController {
                 .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
-
-        if (searchResult.matches().isEmpty()) {
-            return index + ", " + text + ", " + namespace;
-        }
+        System.out.println(searchResult.matches().toString());
+//        if (searchResult.matches().isEmpty()) {
+//            return index + ", " + text + ", " + namespace;
+//        }
 
 
         StringBuilder builder = new StringBuilder();
         for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
+            System.out.println(match.toString());
             builder.append(match.embedded().text()).append("\n");
         }
 
-        System.out.println(builder.toString());
+        System.out.println(builder);
 
         if (namespace.equals("papers")) {
+            System.out.println("DEVEN" + namespace);
             return builder.toString();
         }
 
         return getAISummary(builder.toString());
     }
+
+    @CrossOrigin(origins = "http://localhost:3000")
+    @PostMapping("/get-all-papers")
+    public String getAllPapers(@RequestParam String index, @RequestParam String namespace) throws Exception {
+
+        EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
+
+        float[] zeroEmbeddingArray = new float[embeddingModel.dimension()];
+        Arrays.fill(zeroEmbeddingArray, 0.0f);
+
+        Embedding queryEmbedding = Embedding.from(zeroEmbeddingArray);
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(1000)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+
+
+        System.out.println(searchResult.matches().toString());
+//        if (searchResult.matches().isEmpty()) {
+//            return index + ", " + text + ", " + namespace;
+//        }
+
+
+        StringBuilder builder = new StringBuilder();
+        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
+            System.out.println(match.toString());
+            builder.append(match.embedded().text()).append("\n");
+        }
+
+        System.out.println(builder);
+
+        if (namespace.equals("papers")) {
+            System.out.println("DEVEN" + namespace);
+            return builder.toString();
+        }
+
+        return builder.toString();
+    }
+
+
 
     private String getAISummary(String collectedText) throws Exception {
 
@@ -190,6 +236,7 @@ public class ResearchPaperController {
                 .apiKey(API_PINECONE)
                 .index(index)
                 .nameSpace(namespace)
+                .metadataTextKey("test test")
                 .createIndex(PineconeServerlessIndexConfig.builder()
                         .cloud("AWS")
                         .region("us-east-1")
@@ -210,6 +257,7 @@ public class ResearchPaperController {
                 if (tokenCount + 1 > maxTokenPerChunk) {
 
                     TextSegment textSegment = TextSegment.from(currentChunk.toString());
+
                     Embedding embedding = embeddingModel.embed(textSegment).content();
                     embeddingStore.add(embedding, textSegment);
 

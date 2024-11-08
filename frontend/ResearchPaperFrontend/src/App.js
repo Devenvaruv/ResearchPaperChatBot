@@ -72,11 +72,10 @@ function App() {
     try {
       const formData = new URLSearchParams();
       formData.append("index", index);
-      formData.append("text", "p-");
       formData.append("namespace", "papers");
 
       const response = await axios.post(
-        "http://localhost:8080/api/search",
+        "http://localhost:8080/api/get-all-papers",
         formData,
         {
           headers: {
@@ -84,6 +83,8 @@ function App() {
           },
         }
       );
+
+      console.log(response);
       
       
       const papersArray = response.data.split(/\s+/).filter(item => item !== "")
