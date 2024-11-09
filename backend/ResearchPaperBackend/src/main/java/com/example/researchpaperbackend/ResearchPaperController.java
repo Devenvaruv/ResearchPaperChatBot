@@ -64,10 +64,10 @@ public class ResearchPaperController {
 
     @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", allowCredentials = "true")
     @PostMapping("/update-paper-list")
-    public ResponseEntity<String> updatePaperList(String text, String index, String namespace) {
-
+    public ResponseEntity<String> updatePaperList(String text, String index, String namespace, String metaData) {
+        text = text.trim();
         try {
-            EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
+            EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStoreWithMetaData(index, namespace, metaData);
             processAndStoreEmbeddings(text, embeddingStore);
             return ResponseEntity.ok("Extracted Text:\n" + text);
 
@@ -139,21 +139,21 @@ public class ResearchPaperController {
 
 
         System.out.println(searchResult.matches().toString());
-//        if (searchResult.matches().isEmpty()) {
-//            return index + ", " + text + ", " + namespace;
-//        }
-
 
         StringBuilder builder = new StringBuilder();
         for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
             System.out.println(match.toString());
-            builder.append(match.embedded().text()).append("\n");
+            if(match.embedded().text() != null){
+                builder.append(match.embedded().text()).append("\n");
+            }
+
         }
 
         System.out.println(builder);
 
         if (namespace.equals("papers")) {
-            System.out.println("DEVEN" + namespace);
+            System.out.println("DEVEN: " + namespace);
+            System.out.println("VARU: " + index);
             return builder.toString();
         }
 
@@ -236,7 +236,6 @@ public class ResearchPaperController {
                 .apiKey(API_PINECONE)
                 .index(index)
                 .nameSpace(namespace)
-                .metadataTextKey("test test")
                 .createIndex(PineconeServerlessIndexConfig.builder()
                         .cloud("AWS")
                         .region("us-east-1")
@@ -244,6 +243,22 @@ public class ResearchPaperController {
                         .build())
                 .build();
     }
+
+    private EmbeddingStore<TextSegment> createEmbeddingStoreWithMetaData(String index, String namespace, String metaData) {
+        return PineconeEmbeddingStore.builder()
+                .apiKey(API_PINECONE)
+                .index(index)
+                .nameSpace(namespace)
+                .metadataTextKey(metaData)
+                .createIndex(PineconeServerlessIndexConfig.builder()
+                        .cloud("AWS")
+                        .region("us-east-1")
+                        .dimension(embeddingModel.dimension())
+                        .build())
+                .build();
+    }
+
+
 
     private void processAndStoreEmbeddings(String text, EmbeddingStore<TextSegment> embeddingStore) {
         final int maxTokenPerChunk = 500;

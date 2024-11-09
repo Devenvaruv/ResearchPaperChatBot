@@ -18,7 +18,7 @@ function App() {
   const [userId, setUserId] = useState("");
 
   const [researchPapers, setResearchPapers] = useState([]);
-  const [index, setIndex] = useState("test");
+  const [index, setIndex] = useState("u-74505");
   const [namespace, setNamespace] = useState("p-34987");
 
   const signInWithGoogle = async () => {
@@ -70,26 +70,25 @@ function App() {
   const getResearchPaper = async (event) => {
     
     try {
-      const formData = new URLSearchParams();
-      formData.append("index", index);
-      formData.append("namespace", "papers");
+      const apiKey = ""
+      const apiVersion = "2024-10";
+      
 
-      const response = await axios.post(
-        "http://localhost:8080/api/get-all-papers",
-        formData,
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
-
-      console.log(response);
+      const url = `https://${index}-wi5mspm.svc.aped-4627-b74a.pinecone.io/describe_index_stats`
       
       
-      const papersArray = response.data.split(/\s+/).filter(item => item !== "")
-      setResearchPapers(papersArray)
-      console.log("deven: " , papersArray);   
+      const response = await axios.get(url, {
+        headers: {
+          'Api-Key': apiKey,
+          'X-Pinecone-API-Version': apiVersion,
+        },
+      });
+      console.log("deven: " , response);   
+      const namespaces = response.data.namespaces;
+      const papersArr = Object.keys(namespaces);
+      setResearchPapers(papersArr)
+
+      console.log("Papers: ", papersArr); 
     } catch (error) {
       console.log("ERROR: ", error);
       
@@ -97,11 +96,6 @@ function App() {
     console.log(researchPapers)
 
   }
-
-  
-
-
-
 
   const handleChatSubmit = async (event) => {
     event.preventDefault();
@@ -173,6 +167,7 @@ function App() {
     formData2.append("text", "p-" + hashCode(pdfFile.name));
     formData2.append("index", index);
     formData2.append("namespace", "papers");
+    formData2.append("metaData", pdfFile.name);
 
     try {
       const response2 = await axios.post(
@@ -184,6 +179,10 @@ function App() {
       console.log("error uploading: ", error);
       alert("error" , error);
     }
+
+    getResearchPaper();
+
+    setNamespace("p-" + hashCode(pdfFile.name));
     
   };
 
@@ -236,6 +235,15 @@ function App() {
               Upload PDF
             </button>
             
+          </div>
+
+          <div>
+            {researchPapers.map((paper, index) => (
+              <button key={index} onClick={
+                () => {setNamespace(paper); 
+                setChatLog([])}
+              }>{paper}</button>
+            ))}
           </div>
 
           <div className="chat-container">
