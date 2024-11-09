@@ -14,6 +14,7 @@ function App() {
   const [pdfFile, setPdfFile] = useState(null);
   const [chatInput, setChatInput] = useState("");
   const [chatLog, setChatLog] = useState([]);
+  const [quiz, setQuiz] = useState([]);
 
   const [userId, setUserId] = useState("");
 
@@ -67,10 +68,33 @@ function App() {
     setPdfFile(event.target.files[0]);
   };
 
+  const handleGenerateQuiz = async () => {
+    try {
+      const formData = new URLSearchParams();
+      formData.append("index" , index);
+      formData.append("namespace", namespace);
+
+      const response = await axios.post(
+        "http://localhost:8080/api/generate-quiz",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+      console.log("FFFFF");
+
+      console.log(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   const getResearchPaper = async (event) => {
     
     try {
-      const apiKey = ""
+      const apiKey = "";
       const apiVersion = "2024-10";
       
 
@@ -208,13 +232,19 @@ function App() {
             <h1 className="login-title">
               Welcome to the Research Paper Assistant
             </h1>
-            <p className="login-subtitle"> A Better way to understand your research</p>
-            <button className="login-button" type="button" onClick={signInWithGoogle}>
+            <p className="login-subtitle">
+              {" "}
+              A Better way to understand your research
+            </p>
+            <button
+              className="login-button"
+              type="button"
+              onClick={signInWithGoogle}
+            >
               <i className="google-icon"></i>Sign in with Google
             </button>
           </div>
         </div>
-        
       ) : (
         <div className="app-container">
           <h2 className="app-title">Research Paper Assistant</h2>
@@ -234,17 +264,43 @@ function App() {
               {" "}
               Upload PDF
             </button>
-            
           </div>
 
           <div>
             {researchPapers.map((paper, index) => (
-              <button key={index} onClick={
-                () => {setNamespace(paper); 
-                setChatLog([])}
-              }>{paper}</button>
+              <button
+                key={index}
+                onClick={() => {
+                  setNamespace(paper);
+                  setChatLog([]);
+                }}
+              >
+                {paper}
+              </button>
             ))}
           </div>
+
+          <button onClick={handleGenerateQuiz}>Quiz!</button>
+          {quiz.length > 0 && (
+            <div>
+              <h3>Quiz Time!</h3>
+              {quiz.map((question, qIndex) => (
+                <div key={qIndex}>
+                  <p>{question.question}</p>
+                  {question.options.map((option, oIndex) => (
+                    <div key={oIndex}>
+                      <input
+                        type="radio"
+                        name={`question-${qIndex}`}
+                        value={option}
+                      />
+                      <label>{option}</label>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="chat-container">
             <div className="chat-log">

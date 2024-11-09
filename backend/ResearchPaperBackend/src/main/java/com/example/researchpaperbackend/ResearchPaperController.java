@@ -1,5 +1,6 @@
 package com.example.researchpaperbackend;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -158,6 +159,127 @@ public class ResearchPaperController {
         }
 
         return builder.toString();
+    }
+
+    @CrossOrigin(origins = "http://localhost:3000")
+    @PostMapping("/generate-quiz")
+    public ResponseEntity<?> generateQuiz(@RequestParam String index, @RequestParam String namespace) {
+        try{
+            EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(index, namespace);
+
+            String collectedText = getallText(embeddingStore);
+
+            JsonNode quizJson = generateQuizFromText(collectedText);
+            return ResponseEntity.ok(quizJson);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
+        }
+    }
+
+
+    private String getallText(EmbeddingStore<TextSegment> embeddingStore) throws Exception {
+        float[] zeroEmbeddingArray = new float[embeddingModel.dimension()];
+        Arrays.fill(zeroEmbeddingArray, 0.0f);
+
+        Embedding queryEmbedding = Embedding.from(zeroEmbeddingArray);
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(1000)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+
+        StringBuilder builder = new StringBuilder();
+        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
+            if (match.embedded().text() != null) {
+                builder.append(match.embedded().text()).append("\n");
+            }
+        }
+
+        return builder.toString();
+    }
+
+    private JsonNode generateQuizFromText(String text) throws Exception {
+        String prompt = "Based on the following text, generate 5 multiple-choice questions with four options each. " +
+                "Provide the correct answer for each question. Output the result in JSON format, with the following structure: " +
+                "[{ \"question\": \"...\", \"options\": [\"...\",\"...\",\"...\",\"...\"], \"correct_answer\": \"...\"}]. " +
+                "Do not include any explanations or extra text, and do not include code blocks or backticks. Provide only the JSON array in your response.\n\nText:\n"+ text;
+
+        JsonNode quizJson = callOpenAI(prompt);
+        return quizJson;
+    }
+
+    private JsonNode callOpenAI(String prompt) throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String openaiApiKey = API_OPENAI;
+        if (openaiApiKey == null || openaiApiKey.isEmpty()) {
+            throw new Exception("OpenAI API Key is empty");
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("model", "gpt-3.5-turbo");
+        payload.put("temperature", 0);
+
+        ArrayNode messages = objectMapper.createArrayNode();
+
+        ObjectNode systemMessage = objectMapper.createObjectNode();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", "You are a helpful assistant that generates quiz questions.");
+
+        ObjectNode userMessage = objectMapper.createObjectNode();
+        userMessage.put("role", "user");
+        userMessage.put("content", prompt);
+
+        messages.add(systemMessage);
+        messages.add(userMessage);
+
+        payload.set("messages", messages);
+
+        String requestBody = objectMapper.writeValueAsString(payload);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + openaiApiKey.trim());
+        headers.set("Content-Type", "application/json");
+
+        HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "https://api.openai.com/v1/chat/completions",
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            String responseBody = response.getBody();
+            return extractQuiz(responseBody);
+        } catch (Exception e) {
+            throw new Exception("ERROR: " + e);
+        }
+    }
+
+    private JsonNode extractQuiz(String responseBody) throws Exception{
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ObjectNode json = (ObjectNode) objectMapper.readTree(responseBody);
+            ArrayNode choices = (ArrayNode) json.get("choices");
+            if( choices != null ) {
+                ObjectNode firstChoice = (ObjectNode) choices.get(0);
+                ObjectNode message = (ObjectNode) firstChoice.get("message");
+                String content = message.get("content").asText();
+
+                JsonNode quizJson = objectMapper.readTree(content);
+                System.out.println("Assistant's Response Content: " + content);
+
+                return quizJson;
+            }
+        } catch (Exception e){
+            throw new Exception("ERROR: " + e);
+        }
+        return null;
     }
 
 
